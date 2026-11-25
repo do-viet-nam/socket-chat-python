@@ -1,0 +1,86 @@
+SQLITE CONCURRENCY TEST - AFTER OPTIMIZATION
+Date: 2026-11-25
+Project: Socket Chat Python
+Member: C
+
+Optimization:
+- threading.Lock()
+- BEGIN IMMEDIATE
+- SQLite timeout: 10 seconds
+
+==========================================
+TEST 1: 10 CONCURRENT USERS
+==========================================
+
+Messages per user: 10
+Expected messages: 100
+Saved messages: 100
+Execution time: 1.063 s
+Throughput: 94.10 messages/s
+Average latency: 101.46 ms
+Maximum latency: 135.80 ms
+
+Total unittest time: 3.925 s
+Result: PASS
+
+==========================================
+TEST 2: 50 CONCURRENT USERS
+==========================================
+
+Messages per user: 10
+Expected messages: 500
+Saved messages: 500
+Execution time: 6.243 s
+Throughput: 80.09 messages/s
+Average latency: 593.33 ms
+Maximum latency: 896.24 ms
+
+Total unittest time: 24.299 s
+Result: PASS
+
+==========================================
+TEST 3: 100 CONCURRENT USERS
+==========================================
+
+Messages per user: 10
+Expected messages: 1000
+Saved messages: 1000
+Execution time: 12.805 s
+Throughput: 78.10 messages/s
+Average latency: 1226.55 ms
+Maximum latency: 1707.22 ms
+
+Total unittest time: 50.688 s
+Result: PASS
+
+==========================================
+REGRESSION TEST: ROOM MESSAGE HISTORY
+==========================================
+
+Created messages: 60
+Retrieve latest 20 messages: PASS
+Retrieve latest 50 messages: PASS
+Reject limit of 51 messages: PASS
+
+Total unittest time: 0.928 s
+Result: PASS
+
+==========================================
+CONCLUSION
+==========================================
+
+All concurrency tests passed.
+No missing or duplicate messages detected.
+
+The database locked error did not occur
+during these optimized test runs.
+
+Maximum latency decreased significantly
+at 10 and 50 concurrent users.
+
+Average latency increased due to
+serialized write operations.
+
+Scope:
+Standalone SQLite concurrency testing.
+Socket Server and Client are not included.

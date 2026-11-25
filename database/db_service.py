@@ -3,6 +3,8 @@ import sqlite3
 import hashlib
 import hmac
 import secrets
+import threading
+
 from pathlib import Path
 from contextlib import closing
 
@@ -13,6 +15,9 @@ from contextlib import closing
 
 DB_PATH = Path(__file__).resolve().parent / "chat.db"
 
+# Khoa dong bo cac luong ghi tin nhan
+DB_WRITE_LOCK = threading.Lock()
+
 
 def connect_db():
     conn = sqlite3.connect(DB_PATH, timeout=10)
@@ -21,7 +26,7 @@ def connect_db():
 
 
 # ==========================================
-# 2. DANG KY
+# 2. DANG KY TAI KHOAN
 # ==========================================
 
 def register_user(username, password):
@@ -67,7 +72,7 @@ def register_user(username, password):
 
 
 # ==========================================
-# 3. DANG NHAP
+# 3. DANG NHAP TAI KHOAN
 # ==========================================
 
 def login_user(username, password):
@@ -116,7 +121,7 @@ def login_user(username, password):
 
 
 # ==========================================
-# 4. LUU TIN NHAN
+# 4. LUU TIN NHAN - THREAD SAFE
 # ==========================================
 
 def save_message(
@@ -125,11 +130,14 @@ def save_message(
     receiver_id=None,
     room_id=None
 ):
+
+    # Kiem tra noi dung tin nhan
     if not isinstance(content, str) or not content.strip():
         raise ValueError(
             "Nội dung tin nhắn không được để trống"
         )
 
+    # Kiem tra loai tin nhan
     if receiver_id is None and room_id is None:
         raise ValueError(
             "Phải có người nhận hoặc phòng chat"
@@ -140,37 +148,45 @@ def save_message(
             "Không thể gửi đồng thời tới người nhận và phòng"
         )
 
-    with closing(connect_db()) as conn:
-        with conn:
+    # Chi cho phep mot luong ghi tin nhan tai mot thoi diem
+    with DB_WRITE_LOCK:
 
-            # Kiem tra thanh vien truoc khi gui tin phong
-            if room_id is not None:
-                member = conn.execute(
+        with closing(connect_db()) as conn:
+            with conn:
+
+                # Bat dau giao dich ghi
+                conn.execute("BEGIN IMMEDIATE")
+
+                # Kiem tra quyen gui tin nhan phong
+                if room_id is not None:
+
+                    member = conn.execute(
+                        """
+                        SELECT 1
+                        FROM room_members
+                        WHERE room_id = ? AND user_id = ?
+                        """,
+                        (room_id, sender_id)
+                    ).fetchone()
+
+                    if member is None:
+                        raise ValueError(
+                            "Người gửi chưa tham gia phòng chat"
+                        )
+
+                # Luu tin nhan
+                cursor = conn.execute(
                     """
-                    SELECT 1
-                    FROM room_members
-                    WHERE room_id = ? AND user_id = ?
+                    INSERT INTO messages
+                    (sender_id, receiver_id, room_id, content)
+                    VALUES (?, ?, ?, ?)
                     """,
-                    (room_id, sender_id)
-                ).fetchone()
-
-                if member is None:
-                    raise ValueError(
-                        "Người gửi chưa tham gia phòng chat"
+                    (
+                        sender_id,
+                        receiver_id,
+                        room_id,
+                        content
                     )
-
-            cursor = conn.execute(
-                """
-                INSERT INTO messages
-                (sender_id, receiver_id, room_id, content)
-                VALUES (?, ?, ?, ?)
-                """,
-                (
-                    sender_id,
-                    receiver_id,
-                    room_id,
-                    content
                 )
-            )
 
-            return cursor.lastrowid
+                return cursor.lastrowid

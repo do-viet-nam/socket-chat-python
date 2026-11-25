@@ -1,0 +1,74 @@
+SQLITE CONCURRENCY TEST - BEFORE OPTIMIZATION
+Date: 2026-11-25
+Project: Socket Chat Python
+Member: C
+
+==========================================
+TEST 1: 10 CONCURRENT USERS
+==========================================
+
+Messages per user: 10
+Expected messages: 100
+Saved messages: 100
+Execution time: 1.530 s
+Throughput: 65.37 messages/s
+Average latency: 82.76 ms
+Maximum latency: 1424.10 ms
+
+Total unittest time: 4.625 s
+Result: PASS
+
+==========================================
+TEST 2: 50 CONCURRENT USERS
+==========================================
+
+Messages per user: 10
+Expected messages: 500
+Saved messages: 500
+Execution time: 6.749 s
+Throughput: 74.09 messages/s
+Average latency: 356.32 ms
+Maximum latency: 6463.07 ms
+
+Total unittest time: 21.364 s
+Result: PASS
+
+==========================================
+TEST 3: 100 CONCURRENT USERS
+==========================================
+
+Messages per user: 10
+Expected messages: 1000
+Saved messages: Unknown
+
+Error:
+sqlite3.OperationalError: database is locked
+
+Error location:
+database/db_service.py
+save_message(), line 162
+cursor = conn.execute(...)
+
+Total unittest time: 42.853 s
+
+FAILED (errors=1)
+Result: FAIL
+
+==========================================
+CONCLUSION
+==========================================
+
+SQLite encountered write-lock contention
+during the 100-thread concurrency test.
+
+The test stopped before reporting the
+actual number of saved messages.
+
+Proposed solution:
+- Use threading.Lock() to serialize writes.
+- Use BEGIN IMMEDIATE for write transactions.
+- Retest with 10, 50 and 100 concurrent users.
+
+Scope:
+Standalone SQLite concurrency testing.
+Socket Server and Client are not included.
