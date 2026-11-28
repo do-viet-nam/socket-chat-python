@@ -16,6 +16,18 @@ def init_database():
         conn.execute("PRAGMA foreign_keys = ON")
         conn.executescript(sql)
 
+        # CREATE TABLE IF NOT EXISTS does not upgrade existing tables.
+        with conn:
+            conn.execute("BEGIN IMMEDIATE")
+            columns = {row[1] for row in conn.execute("PRAGMA table_info(users)")}
+            if "display_name" not in columns:
+                conn.execute(
+                    "ALTER TABLE users ADD COLUMN display_name TEXT NOT NULL DEFAULT ''"
+                )
+            conn.execute(
+                "UPDATE users SET display_name = username WHERE display_name = ''"
+            )
+
         tables = conn.execute("""
             SELECT name
             FROM sqlite_master

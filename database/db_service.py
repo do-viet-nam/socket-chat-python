@@ -24,13 +24,20 @@ def connect_db():
 # 2. DANG KY
 # ==========================================
 
-def register_user(username, password):
+def register_user(username, password, display_name=None):
     username = username.strip()
 
     if not username or not password:
         raise ValueError(
             "Tên đăng nhập và mật khẩu không được để trống"
         )
+
+    if display_name is None:
+        display_name = username
+    elif not isinstance(display_name, str) or not display_name.strip():
+        raise ValueError("Tên hiển thị không được để trống")
+    else:
+        display_name = display_name.strip()
 
     salt = secrets.token_bytes(16)
 
@@ -50,10 +57,10 @@ def register_user(username, password):
             with conn:
                 cursor = conn.execute(
                     """
-                    INSERT INTO users (username, password_hash)
-                    VALUES (?, ?)
+                    INSERT INTO users (username, password_hash, display_name)
+                    VALUES (?, ?, ?)
                     """,
-                    (username, password_hash)
+                    (username, password_hash, display_name)
                 )
 
                 return cursor.lastrowid
@@ -116,7 +123,29 @@ def login_user(username, password):
 
 
 # ==========================================
-# 4. LUU TIN NHAN
+# 4. THONG TIN NGUOI DUNG
+# ==========================================
+
+def get_user_profile(user_id):
+    """Return public account fields, or None if the user does not exist."""
+    with closing(connect_db()) as conn:
+        row = conn.execute(
+            """
+            SELECT user_id, username,
+                   COALESCE(NULLIF(display_name, ''), username)
+            FROM users WHERE user_id = ?
+            """,
+            (user_id,)
+        ).fetchone()
+
+    if row is None:
+        return None
+
+    return dict(zip(("user_id", "username", "display_name"), row))
+
+
+# ==========================================
+# 5. LUU TIN NHAN
 # ==========================================
 
 def save_message(

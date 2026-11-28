@@ -125,11 +125,13 @@ def leave_room(room_id, user_id):
 # 5. XEM THANH VIEN PHONG
 # ==========================================
 
-def get_room_members(room_id):
+def get_room_members(room_id, *, include_display_name=False):
+    """Keep legacy tuple fields; optionally append display_name."""
+    extra = ", COALESCE(NULLIF(u.display_name, ''), u.username)" if include_display_name else ""
     with closing(connect_db()) as conn:
         return conn.execute(
-            """
-            SELECT u.user_id, u.username, rm.joined_at
+            f"""
+            SELECT u.user_id, u.username, rm.joined_at{extra}
             FROM room_members AS rm
             JOIN users AS u ON rm.user_id = u.user_id
             WHERE rm.room_id = ?
@@ -143,7 +145,9 @@ def get_room_members(room_id):
 # 6. LAY LICH SU TIN NHAN
 # ==========================================
 
-def get_room_history(room_id, user_id, limit=20):
+def get_room_history(room_id, user_id, limit=20, *, include_display_name=False):
+    """Keep legacy tuple fields; optionally append sender display_name."""
+    extra = ", COALESCE(NULLIF(u.display_name, ''), u.username)" if include_display_name else ""
     if type(limit) is not int or not 1 <= limit <= 50:
         raise ValueError(
             "Số tin nhắn phải nằm trong khoảng 1 đến 50"
@@ -165,13 +169,13 @@ def get_room_history(room_id, user_id, limit=20):
             )
 
         messages = conn.execute(
-            """
+            f"""
             SELECT
                 m.message_id,
                 m.sender_id,
                 u.username,
                 m.content,
-                m.sent_at
+                m.sent_at{extra}
             FROM messages AS m
             JOIN users AS u
                 ON m.sender_id = u.user_id

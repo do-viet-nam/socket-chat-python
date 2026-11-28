@@ -48,6 +48,8 @@ erDiagram
 
 &#x20;       TEXT username UK
 
+&#x20;       TEXT display_name
+
 &#x20;       TEXT password_hash
 
 &#x20;       TEXT created_at
@@ -150,3 +152,12 @@ The database CHECK constraint requires exactly one of these two cases.
 
 
 
+
+## 6. Display names
+
+- `user_id` remains the unique identity and foreign-key target.
+- `username` remains unique and is used for login. `display_name` may be shared by different users.
+- Run `python -m database.init_db` before using the new code with an existing database. The migration backfills existing accounts with their username and preserves IDs, passwords and messages.
+- `register_user(username, password, display_name=None)` returns the user ID as before. Omitting the display name defaults to the username.
+- `get_user_profile(user_id)` returns a dictionary with user_id, username and display_name (or None).
+- Pass `include_display_name=True` to `get_room_members` and `get_room_history` to append display_name to existing result tuples. Default calls retain the old tuple layout. The client should display display_name but select users and route messages by user_id (or unique username when required by the protocol).
